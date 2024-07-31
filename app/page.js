@@ -6,6 +6,10 @@ import {
   Modal,
   TextField,
   Button,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
 } from "@mui/material";
 import { firestore } from "@/firebase";
 import {
@@ -16,13 +20,17 @@ import {
   deleteDoc,
   getDoc,
   setDoc,
+  where,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
+  const [filteredInventory, setFilteredInventory] = useState([]);
   const [open, setOpen] = useState(false);
   const [itemName, setItemName] = useState("");
+  const [itemCategory, setItemCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
 
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, "inventory"));
@@ -35,6 +43,7 @@ export default function Home() {
       });
     });
     setInventory(inventoryList);
+    filterInventory(inventoryList, selectedCategory);
   };
 
   const removeItem = async (item) => {
@@ -52,22 +61,35 @@ export default function Home() {
     await updateInventory(); // Correctly invoke the function
   };
 
-  const addItem = async (item) => {
+  const addItem = async (item, category) => {
     const docRef = doc(collection(firestore, "inventory"), item);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-      const { quantity } = docSnap.data(); // Extract quantity from the document
-      await setDoc(docRef, { quantity: quantity + 1 });
+      const { quantity } = docSnap.data();
+      await setDoc(docRef, { quantity: quantity + 1, category });
     } else {
-      await setDoc(docRef, { quantity: 1 });
+      await setDoc(docRef, { quantity: 1, category });
     }
     await updateInventory(); // Correctly invoke the function
+  };
+
+  const filterInventory = (inventoryList, category) => {
+    if (category) {
+      const filtered = inventoryList.filter((item) => item.category === category);
+      setFilteredInventory(filtered);
+    } else {
+      setFilteredInventory(inventoryList);
+    }
   };
 
   useEffect(() => {
     updateInventory();
   }, []);
+
+  useEffect(() => {
+    filterInventory(inventory, selectedCategory);
+  }, [selectedCategory, inventory]);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -100,20 +122,31 @@ export default function Home() {
           }}
         >
           <Typography variant="h6">Add Item</Typography>
-          <Stack width="100%" direction="row" spacing={2}>
+          <Stack width="100%" spacing={2}>
             <TextField
               variant="outlined"
               fullWidth
+              label="Item Name"
               value={itemName}
               onChange={(e) => {
                 setItemName(e.target.value);
               }}
             />
+            <TextField
+              variant="outlined"
+              fullWidth
+              label="Category"
+              value={itemCategory}
+              onChange={(e) => {
+                setItemCategory(e.target.value);
+              }}
+            />
             <Button
               variant="outlined"
               onClick={() => {
-                addItem(itemName);
+                addItem(itemName, itemCategory);
                 setItemName("");
+                setItemCategory("");
                 handleClose();
               }}
             >
@@ -130,7 +163,26 @@ export default function Home() {
       >
         Add New Item
       </Button>
-      <Box border="1px solid #333">
+      <FormControl variant="outlined" sx={{ minWidth: 200, marginTop: 2 }}>
+        <InputLabel>Filter by Category</InputLabel>
+        <Select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          label="Filter by Category"
+        >
+          <MenuItem value="">
+            <em>All</em>
+          </MenuItem>
+          {Array.from(new Set(inventory.map((item) => item.category))).map(
+            (category) => (
+              <MenuItem key={category} value={category}>
+                {category}
+              </MenuItem>
+            )
+          )}
+        </Select>
+      </FormControl>
+      <Box border="1px solid #333" marginTop={2}>
         <Box
           width="800px"
           height="100px"
@@ -145,7 +197,7 @@ export default function Home() {
         </Box>
 
         <Stack width="800px" height="300px" spacing={2} overflow="auto">
-          {inventory.map(({ name, quantity }) => (
+          {filteredInventory.map(({ name, quantity, category }) => (
             <Box
               key={name}
               width="100%"
@@ -162,11 +214,14 @@ export default function Home() {
               <Typography variant="h3" color="#333" textAlign="center">
                 {quantity}
               </Typography>
+              <Typography variant="h3" color="#333" textAlign="center">
+                {category}
+              </Typography>
               <Stack direction="row" spacing={2}>
                 <Button
                   variant="contained"
                   onClick={() => {
-                    addItem(name);
+                    addItem(name, category);
                   }}
                 >
                   Add
