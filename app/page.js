@@ -31,6 +31,7 @@ export default function Home() {
   const [itemName, setItemName] = useState("");
   const [itemCategory, setItemCategory] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [searchItem, setSearchItem] = useState("")
 
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, "inventory"));
@@ -71,7 +72,7 @@ export default function Home() {
     } else {
       await setDoc(docRef, { quantity: 1, category });
     }
-    await updateInventory(); // Correctly invoke the function
+    await updateInventory();
   };
 
   const filterInventory = (inventoryList, category) => {
@@ -83,6 +84,14 @@ export default function Home() {
     }
   };
 
+  const searchItems = (searchTerm) => {
+    const filtered = inventory.filter((item) =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredInventory(filtered);
+  };
+
+
   useEffect(() => {
     updateInventory();
   }, []);
@@ -90,6 +99,10 @@ export default function Home() {
   useEffect(() => {
     filterInventory(inventory, selectedCategory);
   }, [selectedCategory, inventory]);
+
+  useEffect(() => {
+    searchItems(searchItem);
+  }, [searchItem]);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -163,6 +176,15 @@ export default function Home() {
       >
         Add New Item
       </Button>
+        <TextField
+        variant="outlined"
+        width ="auto"
+        label="search"
+        value={searchItem}
+        onChange={(e) => {
+          setSearchItem(e.target.value);
+        }}
+        />
       <FormControl variant="outlined" sx={{ minWidth: 200, marginTop: 2 }}>
         <InputLabel>Filter by Category</InputLabel>
         <Select
@@ -182,6 +204,7 @@ export default function Home() {
           )}
         </Select>
       </FormControl>
+
       <Box border="1px solid #333" marginTop={2}>
         <Box
           width="800px"
