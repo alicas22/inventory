@@ -72,7 +72,7 @@ export default function Home() {
     try {
         console.log('Sending image to API:', image);
 
-        const response = await fetch('http://localhost:3000/api/getLabel', {
+        const response = await fetch('/api/getLabel', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -88,7 +88,6 @@ export default function Home() {
         if (typeof data === 'string') {
             data = JSON.parse(data);
         }
-
 
         if (response.ok) {
             return data;
