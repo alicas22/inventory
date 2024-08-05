@@ -10,7 +10,10 @@ import {
   Select,
   InputLabel,
   FormControl,
+  InputAdornment,
+  IconButton,
 } from "@mui/material";
+import { Clear } from "@mui/icons-material";
 import { firestore } from "@/firebase";
 import {
   collection,
@@ -23,6 +26,9 @@ import {
   where,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import CameraComponent from "./camera";
+
+
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
@@ -31,7 +37,81 @@ export default function Home() {
   const [itemName, setItemName] = useState("");
   const [itemCategory, setItemCategory] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [searchItem, setSearchItem] = useState("")
+  const [searchItem, setSearchItem] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [image, setImage] = useState(null);
+
+
+  const [devices, setDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState("");
+
+  // const getLabelAndCategory = async (image) => {
+
+  //     try {
+  //     console.log('Sending image to API:', image);
+  //     const response = await fetch('/api/getlabel', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ image }),
+  //     });
+  //     const data = await response.json();
+  //     if (response.ok) {
+  //       return data;
+  //     } else {
+  //       console.error('Error from API:', data.error);
+  //       throw new Error(data.error);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching label and category:', error);
+  //     throw error;
+  //   }
+  // };
+  const getLabelAndCategory = async (image) => {
+    try {
+        console.log('Sending image to API:', image);
+
+        const response = await fetch('http://localhost:3000/api/getLabel', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image })
+        });
+
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+
+        let data = await response.json();
+
+        if (typeof data === 'string') {
+            data = JSON.parse(data);
+        }
+
+
+        if (response.ok) {
+            return data;
+        } else {
+            console.error('Error from API:', data.error);
+            throw new Error(data.error);
+        }
+    } catch (error) {
+        console.error('Error fetching label and category:', error);
+        throw error;
+    }
+};
+
+
+
+  const handleTakePhoto = async () => {
+    if (image) {
+      const { label, category } = await getLabelAndCategory(image);
+      setItemName(label);
+      setItemCategory(category);
+      setCameraOpen(false);
+    }
+  };
 
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, "inventory"));
@@ -59,10 +139,15 @@ export default function Home() {
         await setDoc(docRef, { quantity: quantity - 1 });
       }
     }
-    await updateInventory(); // Correctly invoke the function
+    await updateInventory();
   };
 
   const addItem = async (item, category) => {
+    if (item.length === 0 || category.length === 0) {
+      setOpen(false);
+      return;
+    }
+
     const docRef = doc(collection(firestore, "inventory"), item);
     const docSnap = await getDoc(docRef);
 
@@ -77,7 +162,9 @@ export default function Home() {
 
   const filterInventory = (inventoryList, category) => {
     if (category) {
-      const filtered = inventoryList.filter((item) => item.category === category);
+      const filtered = inventoryList.filter(
+        (item) => item.category === category
+      );
       setFilteredInventory(filtered);
     } else {
       setFilteredInventory(inventoryList);
@@ -91,9 +178,20 @@ export default function Home() {
     setFilteredInventory(filtered);
   };
 
+  const getVideoDevices = async () => {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(
+      (device) => device.kind === "videoinput"
+    );
+    setDevices(videoDevices);
+    if (videoDevices.length > 0) {
+      setSelectedDeviceId(videoDevices[0].deviceId);
+    }
+  };
 
   useEffect(() => {
     updateInventory();
+    getVideoDevices();
   }, []);
 
   useEffect(() => {
@@ -104,8 +202,18 @@ export default function Home() {
     searchItems(searchItem);
   }, [searchItem]);
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleOpen = () => {
+    setOpen(true);
+    setCameraOpen(false);
+  };
+  const handleClose = () => {
+    setOpen(false);
+    setCameraOpen(false);
+  };
+
+  const clearSearch = () => {
+    setSearchItem("");
+  };
 
   return (
     <Box
@@ -116,76 +224,22 @@ export default function Home() {
       alignItems="center"
       flexDirection="column"
       gap={2}
+      sx={{ backgroundColor: "#f1f3f4", padding: 2 }}
     >
-      <Modal open={open} onClose={handleClose}>
-        <Box
-          position="absolute"
-          top="50%"
-          left="50%"
-          width={400}
-          bgcolor="white"
-          border="2px solid #000"
-          boxShadow={24}
-          p={4}
-          display="flex"
-          flexDirection="column"
-          gap={3}
-          sx={{
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          <Typography variant="h6">Add Item</Typography>
-          <Stack width="100%" spacing={2}>
-            <TextField
-              variant="outlined"
-              fullWidth
-              label="Item Name"
-              value={itemName}
-              onChange={(e) => {
-                setItemName(e.target.value);
-              }}
-            />
-            <TextField
-              variant="outlined"
-              fullWidth
-              label="Category"
-              value={itemCategory}
-              onChange={(e) => {
-                setItemCategory(e.target.value);
-              }}
-            />
-            <Button
-              variant="outlined"
-              onClick={() => {
-                addItem(itemName, itemCategory);
-                setItemName("");
-                setItemCategory("");
-                handleClose();
-              }}
-            >
-              Add
-            </Button>
-          </Stack>
-        </Box>
-      </Modal>
-      <Button
-        variant="contained"
-        onClick={() => {
-          handleOpen();
+      <Typography variant="h4" sx={{ marginBottom: 2, color: "#202124" }}>
+        Inventory Management
+      </Typography>
+      <FormControl
+        variant="outlined"
+        sx={{
+          minWidth: 200,
+          marginBottom: 2,
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 1,
+            backgroundColor: "white",
+          },
         }}
       >
-        Add New Item
-      </Button>
-        <TextField
-        variant="outlined"
-        width ="auto"
-        label="search"
-        value={searchItem}
-        onChange={(e) => {
-          setSearchItem(e.target.value);
-        }}
-        />
-      <FormControl variant="outlined" sx={{ minWidth: 200, marginTop: 2 }}>
         <InputLabel>Filter by Category</InputLabel>
         <Select
           value={selectedCategory}
@@ -204,56 +258,125 @@ export default function Home() {
           )}
         </Select>
       </FormControl>
-
-      <Box border="1px solid #333" marginTop={2}>
+      <Box
+        width="80%"
+        maxWidth={800}
+        maxHeight="50vh"
+        overflow="auto"
+        sx={{
+          borderRadius: 8,
+          border: "1px solid #ddd",
+          backgroundColor: "#fff",
+          padding: 2,
+        }}
+      >
         <Box
-          width="800px"
-          height="100px"
-          bgcolor="#ADD8E6"
+          width="100%"
+          bgcolor="#4285f4"
           display="flex"
           alignItems="center"
           justifyContent="center"
+          sx={{ padding: "12px 0", borderRadius: "8px 8px 0 0" }}
         >
-          <Typography variant="h2" color="#333">
+          <Typography variant="h5" color="white">
             Inventory
           </Typography>
         </Box>
 
-        <Stack width="800px" height="300px" spacing={2} overflow="auto">
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          padding={1}
+          sx={{ backgroundColor: "#f1f3f4", borderRadius: "8px 8px 0 0" }}
+        >
+          <Typography
+            variant="body1"
+            color="#202124"
+            sx={{ width: "25%", textAlign: "center", fontWeight: "bold" }}
+          >
+            Name
+          </Typography>
+          <Typography
+            variant="body1"
+            color="#202124"
+            sx={{ width: "25%", textAlign: "center", fontWeight: "bold" }}
+          >
+            Quantity
+          </Typography>
+          <Typography
+            variant="body1"
+            color="#202124"
+            sx={{ width: "25%", textAlign: "center", fontWeight: "bold" }}
+          >
+            Category
+          </Typography>
+          <Typography
+            variant="body1"
+            color="#202124"
+            sx={{ width: "25%", textAlign: "center", fontWeight: "bold" }}
+          >
+            Actions
+          </Typography>
+        </Box>
+
+        <Stack width="100%" spacing={2} padding={2}>
           {filteredInventory.map(({ name, quantity, category }) => (
             <Box
               key={name}
               width="100%"
-              minHeight="150px"
               display="flex"
               alignItems="center"
               justifyContent="space-between"
-              bgcolor="#f0f0f0"
-              padding={5}
+              padding={1}
+              sx={{
+                borderRadius: 1,
+                backgroundColor: "#f9f9f9",
+                border: "1px solid #eee",
+              }}
             >
-              <Typography variant="h3" color="#333" textAlign="center">
+              <Typography
+                variant="body1"
+                color="#202124"
+                sx={{ width: "25%", textAlign: "center" }}
+              >
                 {name.charAt(0).toUpperCase() + name.slice(1)}
               </Typography>
-              <Typography variant="h3" color="#333" textAlign="center">
+              <Typography
+                variant="body1"
+                color="#202124"
+                sx={{ width: "25%", textAlign: "center" }}
+              >
                 {quantity}
               </Typography>
-              <Typography variant="h3" color="#333" textAlign="center">
+              <Typography
+                variant="body1"
+                color="#202124"
+                sx={{ width: "25%", textAlign: "center" }}
+              >
                 {category}
               </Typography>
-              <Stack direction="row" spacing={2}>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ width: "25%", justifyContent: "center" }}
+              >
                 <Button
                   variant="contained"
+                  color="primary"
                   onClick={() => {
                     addItem(name, category);
                   }}
+                  sx={{ borderRadius: 1 }}
                 >
                   Add
                 </Button>
                 <Button
                   variant="contained"
+                  color="error"
                   onClick={() => {
                     removeItem(name);
                   }}
+                  sx={{ borderRadius: 1 }}
                 >
                   Remove
                 </Button>
@@ -262,6 +385,155 @@ export default function Home() {
           ))}
         </Stack>
       </Box>
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        gap={2}
+        width="80%"
+        maxWidth={600}
+        marginTop={2}
+      >
+        <TextField
+          variant="outlined"
+          fullWidth
+          label="Search"
+          value={searchItem}
+          onChange={(e) => {
+            setSearchItem(e.target.value);
+          }}
+          InputProps={{
+            endAdornment: searchItem && (
+              <InputAdornment position="end">
+                <IconButton onClick={clearSearch}>
+                  <Clear />
+                </IconButton>
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 1,
+              backgroundColor: "white",
+              boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.1)",
+              borderColor: "#ddd",
+            },
+            "& .MuiInputLabel-root": {
+              color: "#888",
+            },
+          }}
+        />
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleOpen}
+          sx={{ borderRadius: 1, padding: "10px 20px", marginTop: 2 }}
+        >
+          Add New Item
+        </Button>
+      </Box>
+      <Modal open={open} onClose={handleClose}>
+        <Box
+          position="absolute"
+          top="50%"
+          left="50%"
+          width={cameraOpen ? 800 : 300}
+          height={cameraOpen ? 600 : 'auto'}
+          bgcolor="white"
+          boxShadow={24}
+          p={3}
+          display="flex"
+          flexDirection="column"
+          gap={2}
+          sx={{
+            transform: "translate(-50%, -50%)",
+            borderRadius: 2,
+            border: "1px solid #ddd",
+              overflowY: cameraOpen ? 'scroll' : 'visible',
+          }}
+        >
+          <Typography variant="h6" color="primary">
+            Add Item
+          </Typography>
+          <Stack width="100%" spacing={2}>
+            {cameraOpen ? (
+              <>
+                <FormControl fullWidth>
+                  <InputLabel>Select Camera</InputLabel>
+                  <Select
+                    value={selectedDeviceId}
+                    onChange={(e) => setSelectedDeviceId(e.target.value)}
+                    label="Select Camera"
+                  >
+                    {devices.map((device) => (
+                      <MenuItem key={device.deviceId} value={device.deviceId}>
+                        {device.label || `Camera ${device.deviceId}`}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <CameraComponent
+                  setImage={setImage}
+                  deviceId={selectedDeviceId}
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleTakePhoto}
+
+                  sx={{ borderRadius: 1 }}
+                >
+                  Process Photo
+                </Button>
+              </>
+            ) : (
+              <>
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  label="Item Name"
+                  value={itemName}
+                  onChange={(e) => {
+                    setItemName(e.target.value);
+                  }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
+                />
+                <TextField
+                  variant="outlined"
+                  fullWidth
+                  label="Category"
+                  value={itemCategory}
+                  onChange={(e) => {
+                    setItemCategory(e.target.value);
+                  }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
+                />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => {
+                    addItem(itemName, itemCategory, image);
+                    setItemName("");
+                    setItemCategory("");
+                    handleClose();
+                  }}
+                  sx={{ borderRadius: 1 }}
+                >
+                  Add
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setCameraOpen(true)}
+                  sx={{ borderRadius: 1 }}
+                >
+                  Add with Camera
+                </Button>
+              </>
+            )}
+          </Stack>
+        </Box>
+      </Modal>
     </Box>
   );
 }
