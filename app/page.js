@@ -84,13 +84,13 @@ export default function Home() {
         console.log('Response headers:', response.headers);
 
         let data = await response.json();
-
+        console.log("*****data from response:" , data)
         if (typeof data === 'string') {
             data = JSON.parse(data);
         }
 
         if (response.ok) {
-            return data;
+            return data.results;
         } else {
             console.error('Error from API:', data.error);
             throw new Error(data.error);
@@ -103,10 +103,10 @@ export default function Home() {
 
 
 
-  const handleTakePhoto = async () => {
+  const handleProcessPhoto = async () => {
     if (image) {
-      const { label, category } = await getLabelAndCategory(image);
-      setItemName(label);
+      const { itemName, category } = await getLabelAndCategory(image);
+      setItemName(itemName);
       setItemCategory(category);
       setCameraOpen(false);
     }
@@ -474,16 +474,16 @@ export default function Home() {
                 <CameraComponent
                   setImage={setImage}
                   deviceId={selectedDeviceId}
+                  handleProcessPhoto={handleProcessPhoto}
                 />
-                <Button
+                {/* <Button
                   variant="contained"
                   color="primary"
-                  onClick={handleTakePhoto}
 
                   sx={{ borderRadius: 1 }}
                 >
                   Process Photo
-                </Button>
+                </Button> */}
               </>
             ) : (
               <>

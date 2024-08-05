@@ -2,13 +2,14 @@ import React, { useRef } from "react";
 import { Camera } from "react-camera-pro";
 import { Button } from "@mui/material";
 
-const CameraComponent = ({ setImage, deviceId }) => {
+const CameraComponent = ({ setImage, deviceId, handleProcessPhoto }) => {
   const camera = useRef(null);
 
-//   const handleTakePhoto = () => {
-//     const photo = camera.current.takePhoto();
-//     setImage(photo);
-//   };
+  const handleTakePhoto = () => {
+    const photo = camera.current.takePhoto();
+    setImage(photo);
+    handleProcessPhoto(photo)
+  };
 
   return (
     <div>
@@ -29,14 +30,10 @@ const CameraComponent = ({ setImage, deviceId }) => {
 <Button
         variant="contained"
         color="primary"
-        onClick={() => {
-          const photo = camera.current.takePhoto();
-          console.log('Captured photo:', photo);  // Log the captured photo
-          setImage(photo);  // Ensure only image data is set
-        }}
+        onClick={handleTakePhoto}
         sx={{ borderRadius: 1 }}
       >
-        Take photo
+        Process photo
       </Button>
     </div>
   );
