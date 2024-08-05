@@ -45,29 +45,7 @@ export default function Home() {
   const [devices, setDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState("");
 
-  // const getLabelAndCategory = async (image) => {
 
-  //     try {
-  //     console.log('Sending image to API:', image);
-  //     const response = await fetch('/api/getlabel', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify({ image }),
-  //     });
-  //     const data = await response.json();
-  //     if (response.ok) {
-  //       return data;
-  //     } else {
-  //       console.error('Error from API:', data.error);
-  //       throw new Error(data.error);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error fetching label and category:', error);
-  //     throw error;
-  //   }
-  // };
   const getLabelAndCategory = async (image) => {
     try {
         console.log('Sending image to API:', image);
@@ -135,7 +113,7 @@ export default function Home() {
       if (quantity === 1) {
         await deleteDoc(docRef);
       } else {
-        await setDoc(docRef, { quantity: quantity - 1 });
+        await setDoc(docRef, { quantity: quantity - 1 }, { merge: true });
       }
     }
     await updateInventory();
