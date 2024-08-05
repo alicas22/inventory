@@ -31,7 +31,9 @@ const CameraComponent = ({ setImage, deviceId, handleProcessPhoto }) => {
         variant="contained"
         color="primary"
         onClick={handleTakePhoto}
-        sx={{ borderRadius: 1 }}
+
+        sx={{ borderRadius: 1, marginTop:4}}
+
       >
         Process photo
       </Button>
